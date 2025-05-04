@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz App</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <style>
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #e3f2fd;
+            color: #0d47a1;
+            border: 1px solid #90caf9;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .download-btn.click-animation::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.3);
+            animation: ripple 0.6s linear;
+            border-radius: 4px;
+        }
+        @keyframes ripple {
+            0% {
+                transform: scale(0.8);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+        .download-btn:hover {
+            background: #bbdefb;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .download-btn:active {
+            transform: scale(0.98);
+            background: #90caf9;
+        }
+        .download-btn svg {
+            width: 14px;
+            height: 14px;
+            transition: transform 0.2s ease;
+        }
+        .download-btn:active svg {
+            transform: translateY(1px);
+        }
+        /* Disable text selection */
+        body {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+        
+        .setup-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            margin-top: 5px;
+        }
+        
+        .timer-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+        
+        .timer-controls .control-btn {
+            justify-content: space-between;
+            width: 100%;
+            text-align: left;
+        }
+
+        /* Add these styles to fix menu header */
+        .menu-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 300px;
+            height: 100vh;
+            background: var(--menu-bg);
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .menu-header {
+            position: sticky;
+            top: 0;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 40px 1fr 40px;
+            align-items: center;
+            padding: 15px 20px;
+            background: var(--menu-bg);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 1001;
+        }
+
+        .menu-panel.open {
+            transform: translateX(0);
+        }
+
+        .menu-title {
+            margin: 0;
+            font-size: 1.2rem;
+            color: var(--text-color);
+            font-weight: 500;
+            text-align: center;
+            grid-column: 2;
+        }
+
+        .menu-toggle {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 1002;
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease, left 0.3s ease;
+        }
+
+        .menu-panel.open ~ .container .menu-toggle,
+        .menu-toggle.menu-open {
+            left: 315px;
+        }
+
+        .menu-toggle:hover {
+            transform: scale(1.1);
+        }
+
+        .close-menu {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+            grid-column: 3;
+            justify-self: end;
+        }
+
+        .close-menu:hover {
+            transform: scale(1.1);
+        }
+
+        .menu-content {
+            padding: 15px;
+        }
+
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 10px 0;
+        }
+
+        /* Adjust quiz container margin */
+        .quiz-container {
+            margin-left: 20px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .quiz-container.menu-open {
+            margin-left: 320px;
+        }
+
+        .correct-answers-panel {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 250px;
+            max-height: 70vh;
+            background: var(--panel-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            overflow-y: auto;
+            z-index: 100;
+            border: 1px solid var(--border-color);
+        }
+
+        .correct-answers-panel h3 {
+            margin: 0 0 20px 0;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border-color);
+            color: var(--text-color);
+            font-size: 1.2em;
+            font-weight: 600;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+
+        #correct-answers-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 5px;
+        }
+
+        #correct-answers-list div {
+            padding: 12px 16px;
+            background: var(--option-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 25px;
+            color: var(--text-color);
+            font-size: 1em;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin: 0 5px;
+        }
+
+        #correct-answers-list div:hover {
+            transform: translateX(-5px);
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
+            background: var(--hover-bg);
+        }
+
+        /* Custom scrollbar for the panel */
+        .correct-answers-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .correct-answers-panel::-webkit-scrollbar-track {
+            background: var(--panel-bg);
+            border-radius: 4px;
+        }
+
+        .correct-answers-panel::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .correct-answers-panel::-webkit-scrollbar-thumb:hover {
+            background: var(--text-color);
+        }
+
+        /* Adjust review container margin */
+        #review-container {
+            margin-right: 280px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Menu Toggle Button -->
+    <button id="menu-toggle" class="menu-toggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Slide-out Menu Panel -->
+    <div id="menu-panel" class="menu-panel">
+        <div class="menu-header">
+            <h3 class="menu-title">Menu</h3>
+            <button id="close-menu" class="close-menu">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="menu-content">
+            <!-- Control Panel moved to menu -->
+            <div class="control-panel">
+                <div class="control-row">
+                    <div id="progress-percentage" class="progress-percentage">0%</div>
+                </div>
+                <div class="control-row timer-row">
+                    <div class="timer-controls">
+                        <button id="stopwatch-toggle" class="control-btn">
+                            <i class="fas fa-stopwatch"></i> Stopwatch: <span id="stopwatch-display">00:00:00</span>
+                        </button>
+                        <button id="timer-toggle" class="control-btn">
+                            <i class="fas fa-clock"></i> Timer: <span id="timer-display">--:--:--</span>
+                        </button>
+                        <button id="set-timer" class="control-btn">
+                            <i class="fas fa-hourglass-start"></i> Set Timer
+                        </button>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <button id="save-button" class="control-btn save-btn">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button id="reset-button" class="control-btn reset-btn">
+                        <i class="fas fa-undo"></i> Reset
+                    </button>
+                </div>
+                <div class="control-row">
+                    <button id="theme-toggle" class="control-btn theme-btn">
+                        <i class="fas fa-moon"></i> Dark Mode
+                    </button>
+                </div>
+                <div class="control-row">
+                    <button id="cursor-toggle" class="cursor-toggle-btn">
+                        <i class="fas fa-mouse-pointer"></i> Cursor On
+                    </button>
+                </div>
+                <div class="control-row new-feature-row">
+                    <button id="new-feature-btn" class="control-btn">
+                        <i class="fas fa-star"></i> New Feature
+                    </button>
+                </div>
+                <div class="control-row submit-row">
+                    <button id="submit-quiz" class="control-btn" style="background-color: #fbbf24; color: #000000;">
+                        <i class="fas fa-check"></i> Submit Quiz
+                    </button>
+                </div>
+                <div class="control-row paper-checked-row" style="display: none;">
+                    <button id="paper-checked-button" class="control-btn">
+                        <i class="fas fa-clipboard-check"></i> Paper Checked
+                    </button>
+                    <button id="menu-download-button" class="control-btn" style="display: none;">
+                        <i class="fas fa-download"></i> Download Results
+                    </button>
+                </div>
+                <div class="control-row dashboard-row">
+                    <button id="dashboard-button" class="control-btn dashboard-btn" disabled>
+                        <i class="fas fa-tachometer-alt"></i> Your Dashboard
+                    </button>
+                </div>
+                <div class="control-row">
+                    <button id="home-page-button" class="control-btn">
+                        <i class="fas fa-home"></i> Go to Home
+                    </button>
+                </div>
+            </div>
+            <!-- Back to Quiz button for Create Answer Key mode -->
+            <button id="back-to-quiz-menu-btn" class="control-btn" style="display:none; margin-top: 20px; width: 100%;">
+                <i class="fas fa-arrow-left"></i> Back to Quiz
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Quiz Setup Panel -->
+        <div class="quiz-setup-container">
+            <div class="setup-box">
+                <h3>QUIZ SETUP</h3>
+                <div class="setup-controls">
+                    <div class="setup-row">
+                        <label for="student-name">Your Name (Optional):</label>
+                        <input type="text" id="student-name" class="setup-input" placeholder="Enter your name">
+                    </div>
+                    <div class="setup-row">
+                        <label for="question-count">Number of Questions:</label>
+                        <select id="question-count" class="setup-select">
+                            <option value="10">10 Questions</option>
+                            <option value="20">20 Questions</option>
+                            <option value="30">30 Questions</option>
+                            <option value="50">50 Questions</option>
+                            <option value="100">100 Questions</option>
+                            <option value="150" selected>All Questions (150)</option>
+                        </select>
+                    </div>
+                    <div class="or-separator">or</div>
+                    <button id="customized-quiz-btn" class="setup-btn">
+                        <i class="fas fa-file-upload"></i> Customized Quiz
+                    </button>
+                    <button id="start-quiz-btn" class="setup-btn">
+                        START QUIZ <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Upload Modal -->
+        <div id="file-upload-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2>Upload Quiz Questions</h2>
+                <div class="upload-container">
+                    <input type="file" id="quiz-file" accept=".txt,.doc,.docx,.xls,.xlsx">
+                    <div class="file-format-info">
+                        <p>Supported formats: .txt, .doc, .docx, .xls, .xlsx</p>
+                        <p>Format your questions as:</p>
+                        <pre>
+Q1. What is the capital of France?
+A) Paris
+B) London
+C) Berlin
+D) Madrid
+
+Q2. Which planet is known as the Red Planet?
+A) Venus
+B) Mars
+C) Jupiter
+D) Saturn
+                        </pre>
+                    </div>
+                    <button id="process-file-btn" class="control-btn">
+                        <i class="fas fa-cogs"></i> Process File
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Answer Key Upload Modal -->
+        <div id="answer-key-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2>Upload Answer Key</h2>
+                <div class="upload-container">
+                    <input type="file" id="answer-key-file" accept=".txt">
+                    <div class="file-format-info">
+                        <p>Supported format: .txt</p>
+                        <p>Format your answer key as:</p>
+                        <pre>
+Question 1: A
+Question 2: B
+Question 3: B
+Question 4: C
+Question 5: A
+Question 6: C
+Question 7: B
+Question 8: A
+Question 9: C
+Question 10: A</pre>
+                        <p>Note: Each line should contain "Question" followed by the question number, a colon, and the correct option letter (A/B/C/D/E)</p>
+                    </div>
+                    <button id="process-answer-key-btn" class="control-btn">
+                        <i class="fas fa-cogs"></i> Process Answer Key
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Modal -->
+        <div id="dashboard-modal" class="modal dashboard-modal">
+            <div class="dashboard-content">
+                <div class="dashboard-header">
+                    <h2>Your Performance Dashboard</h2>
+                    <button class="close-dashboard">&times;</button>
+                </div>
+                <div class="dashboard-body">
+                    <div class="student-info">
+                        <i class="fas fa-user-graduate"></i>
+                        <span id="dashboard-student-name">Anonymous Student</span>
+                    </div>
+                    <div class="score-summary">
+                        <div class="score-circle">
+                            <svg class="score-progress">
+                                <circle class="score-background" cx="60" cy="60" r="54"></circle>
+                                <circle class="score-progress-circle" cx="60" cy="60" r="54"></circle>
+                            </svg>
+                            <div class="score-text">
+                                <span id="dashboard-score">0</span>
+                                <span id="dashboard-total">/0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-box correct">
+                            <i class="fas fa-check"></i>
+                            <span class="stat-label">Correct</span>
+                            <span id="correct-count" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-box incorrect">
+                            <i class="fas fa-times"></i>
+                            <span class="stat-label">Incorrect</span>
+                            <span id="incorrect-count" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-box unanswered">
+                            <i class="fas fa-question"></i>
+                            <span class="stat-label">Unanswered</span>
+                            <span id="unanswered-count" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-box doubts">
+                            <i class="fas fa-star"></i>
+                            <span class="stat-label">Doubts</span>
+                            <span id="doubts-count" class="stat-value">0</span>
+                        </div>
+                    </div>
+                    <div class="answers-summary">
+                        <h3>Question Summary</h3>
+                        <div id="answers-list" class="answers-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <h3>Questions</h3>
+            <div id="question-preview"></div>
+        </aside>
+
+        <!-- Main Quiz Content -->
+        <main class="quiz-container">
+            <div id="question-container">
+                <div id="question"></div>
+                <div id="options"></div>
+            </div>
+            <div class="button-container">
+                <button id="back-button" class="btn">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <button id="next-button" class="btn">
+                    Next <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </main>
+        <div id="review-container" style="display:none;">
+            <!-- Add the correct answers panel here -->
+            <div class="correct-answers-panel">
+                <h3>Correct Answers</h3>
+                <div id="correct-answers-list"></div>
+            </div>
+        </div>
+
+        <!-- Selected Options Panel -->
+        <aside class="selected-options-panel">
+            <h3>Selected Options</h3>
+            <div class="selected-options-list" id="selected-options-list"></div>
+            <button id="new-download-btn" class="download-btn">
+                <i class="fas fa-download"></i> Download
+            </button>
+        </aside>
+
+        <!-- New Feature Panels -->
+        <div id="new-feature-panels" style="display: none;">
+            <!-- Questions Panel -->
+            <div class="options-panel">
+                <h3>Create Answer Key</h3>
+                <div class="questions-list">
+                    <!-- Questions will be dynamically added here -->
+                </div>
+            </div>
+
+            <!-- Right Answers Panel -->
+            <aside class="right-answers-panel">
+                <div class="right-answers-header">
+                    <i class="fas fa-clipboard-check"></i>
+                    <span>Right Answers</span>
+                </div>
+                <div class="right-answers-list"></div>
+                <button id="right-answers-download-btn" class="download-btn get-answer-key-btn">
+                    <i class="fas fa-download"></i> Get Answer Key
+                </button>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Custom Cursor -->
+    <div class="follower">
+        <div class="follower__inner"></div>
+        <span class="follower__content"></span>
+    </div>
+
+    <!-- Floating Toggle Button for Quiz/Review -->
+    <button id="toggle-review-btn" class="toggle-review-btn" style="display:none;">
+        <span class="toggle-icon"><i class="fas fa-exchange-alt"></i></span>
+        <span class="toggle-label">Toggle Review</span>
+    </button>
+
+    <script src="script.js"></script>
+</body>
+</html>
